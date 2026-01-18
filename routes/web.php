@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ComplaintController;
+use App\Models\Complaint;
 
 Route::get('/', function () {
     return redirect()->route('complaints.index');
@@ -9,16 +10,14 @@ Route::get('/', function () {
 
 Route::resource('complaints', ComplaintController::class);
 
-use App\Models\Complaint;
-
 Route::get('/dashboard', function () {
     $total = Complaint::count();
-    $pending = Complaint::where('status', 'baru')->count();
-    $process = Complaint::where('status', 'proses')->count();
-    $resolved = Complaint::where('status', 'selesai')->count();
+    $baru = Complaint::where('status', 'baru')->count();
+    $proses = Complaint::where('status', 'proses')->count();
+    $selesai = Complaint::where('status', 'selesai')->count();
 
-    $complaints = Complaint::latest()->take(10)->get();
+    $recentComplaints = Complaint::latest()->take(5)->get();
 
-    return view('dashboard', compact('total', 'pending', 'process', 'resolved', 'complaints'));
+    return view('dashboard', compact('total', 'baru', 'proses', 'selesai', 'recentComplaints'));
 })->name('dashboard');
 
