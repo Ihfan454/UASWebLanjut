@@ -8,3 +8,7 @@ Route::get('/', function () {
 });
 
 Route::resource('complaints', ComplaintController::class);
+
+Route::get('/dashboard', function () {
+    return view('dashboard');
+});
