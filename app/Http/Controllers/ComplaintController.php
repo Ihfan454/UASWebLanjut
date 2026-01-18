@@ -4,20 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\Complaint;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class ComplaintController extends Controller
 {
     public function index()
     {
-        $complaints = Complaint::latest()->paginate(10);
-        $stats = [
-            'total' => Complaint::count(),
-            'pending' => Complaint::where('status', 'Pending')->count(),
-            'diproses' => Complaint::where('status', 'Diproses')->count(),
-            'selesai' => Complaint::where('status', 'Selesai')->count(),
-        ];
-        return view('complaints.index', compact('complaints', 'stats'));
+        $complaints = Complaint::latest()->get();
+        return view('complaints.index', compact('complaints'));
     }
 
     public function create()
@@ -27,31 +20,37 @@ class ComplaintController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'nim' => 'required|string|max:20',
-            'email' => 'required|email|max:255',
-            'phone' => 'required|string|max:20',
-            'category' => 'required|in:Kebersihan,Fasilitas Rusak,Keamanan,Layanan,Lainnya',
-            'location' => 'required|string|max:255',
-            'description' => 'required|string',
-            'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-            'priority' => 'required|in:Rendah,Sedang,Tinggi',
+        $request->validate([
+            'name' => 'required',
+            'nim' => 'required',
+            'email' => 'required|email',
+            'phone' => 'required',
+            'category' => 'required',
+            'location' => 'required',
+            'description' => 'required',
+            'priority' => 'required|in:rendah,sedang,tinggi',
+            'photo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
+        $photoPath = null;
         if ($request->hasFile('photo')) {
-            $validated['photo'] = $request->file('photo')->store('complaints', 'public');
+            $photoPath = $request->file('photo')->store('complaints', 'public');
         }
 
-        Complaint::create($validated);
+        Complaint::create([
+            'name' => $request->name,
+            'nim' => $request->nim,
+            'email' => $request->email,
+            'phone' => $request->phone,
+            'category' => $request->category,
+            'location' => $request->location,
+            'description' => $request->description,
+            'priority' => $request->priority,
+            'photo' => $photoPath,
+            'status' => 'baru',
+        ]);
 
-        return redirect()->route('complaints.index')
-            ->with('success', 'Laporan berhasil dikirim!');
-    }
-
-    public function show(Complaint $complaint)
-    {
-        return view('complaints.show', compact('complaint'));
+        return redirect()->route('complaints.index')->with('success', 'Laporan terkirim!');
     }
 
     public function edit(Complaint $complaint)
@@ -61,41 +60,24 @@ class ComplaintController extends Controller
 
     public function update(Request $request, Complaint $complaint)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'nim' => 'required|string|max:20',
-            'email' => 'required|email|max:255',
-            'phone' => 'required|string|max:20',
-            'category' => 'required|in:Kebersihan,Fasilitas Rusak,Keamanan,Layanan,Lainnya',
-            'location' => 'required|string|max:255',
-            'description' => 'required|string',
-            'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-            'status' => 'required|in:Pending,Diproses,Selesai',
-            'priority' => 'required|in:Rendah,Sedang,Tinggi',
+        $request->validate([
+            'status' => 'required|in:baru,proses,selesai',
         ]);
 
-        if ($request->hasFile('photo')) {
-            if ($complaint->photo) {
-                Storage::disk('public')->delete($complaint->photo);
-            }
-            $validated['photo'] = $request->file('photo')->store('complaints', 'public');
-        }
+        $complaint->update([
+            'status' => $request->status,
+        ]);
 
-        $complaint->update($validated);
-
-        return redirect()->route('complaints.index')
-            ->with('success', 'Laporan berhasil diperbarui!');
+        return redirect()->route('complaints.index')->with('success', 'Status updated!');
     }
 
     public function destroy(Complaint $complaint)
     {
-        if ($complaint->photo) {
-            Storage::disk('public')->delete($complaint->photo);
+        if ($complaint->status !== 'selesai') {
+            return back()->with('error', 'Hanya laporan selesai yang bisa dihapus!');
         }
-        
-        $complaint->delete();
 
-        return redirect()->route('complaints.index')
-            ->with('success', 'Laporan berhasil dihapus!');
+        $complaint->delete();
+        return back()->with('success', 'Laporan dihapus!');
     }
 }
