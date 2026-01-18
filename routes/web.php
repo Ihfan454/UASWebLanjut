@@ -9,6 +9,16 @@ Route::get('/', function () {
 
 Route::resource('complaints', ComplaintController::class);
 
+use App\Models\Complaint;
+
 Route::get('/dashboard', function () {
-    return view('dashboard');
-});
+    $total = Complaint::count();
+    $pending = Complaint::where('status', 'baru')->count();
+    $process = Complaint::where('status', 'proses')->count();
+    $resolved = Complaint::where('status', 'selesai')->count();
+
+    $complaints = Complaint::latest()->take(10)->get();
+
+    return view('dashboard', compact('total', 'pending', 'process', 'resolved', 'complaints'));
+})->name('dashboard');
+
