@@ -3,5 +3,8 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ComplaintController;
 
-Route::get('/', [ComplaintController::class, 'index'])->name('complaints.index');
+Route::get('/', function () {
+    return redirect()->route('complaints.index');
+});
+
 Route::resource('complaints', ComplaintController::class);
