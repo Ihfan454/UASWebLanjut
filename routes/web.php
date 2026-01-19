@@ -1,33 +1,65 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ComplaintController;
-use App\Models\Complaint;
+use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\AdminController;
+use App\Http\Controllers\ProfileController;
 
+// ============================================
+// PUBLIC ROUTES (Tanpa Login)
+// ============================================
+
+// Welcome Page (Homepage)
 Route::get('/', function () {
-    return redirect()->route('dashboard');
+    return view('welcome');
 });
 
-// DASHBOARD (ambil data dari DB)
+// Dashboard Page (Public)
 Route::get('/dashboard', function () {
-    $total   = Complaint::count();
-    $pending = Complaint::where('status', 'baru')->count();     // baru = menunggu
-    $process = Complaint::where('status', 'proses')->count();
-    $resolved= Complaint::where('status', 'selesai')->count();
+    return view('dashboard');
+})->middleware(['auth', 'verified'])->name('dashboard');
 
-    $complaints = Complaint::latest()->take(10)->get(); // 10 laporan terbaru
+// ============================================
+// AUTH ROUTES (Login & Register)
+// ============================================
 
-    return view('dashboard', compact('total','pending','process','resolved','complaints'));
-})->name('dashboard');
+Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
+Route::post('/login', [LoginController::class, 'login']);
+Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
-// CRUD Complaint
-Route::resource('complaints', ComplaintController::class);
+Route::get('/register', [RegisterController::class, 'showRegistrationForm'])->name('register');
+Route::post('/register', [RegisterController::class, 'register']);
 
-// (Kalau Breeze dipakai, biarin aja bagian ini)
-Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+// ============================================
+// PROTECTED ROUTES - Harus Login
+// ============================================
+
+Route::middleware(['auth'])->group(function () {
+    
+    // Profile Routes (yang sudah ada)
+    Route::middleware('auth')->group(callback: function (): void {
+        Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+        Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+        Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    });
+    
+    // ============================================
+    // MAHASISWA ROUTES - Complaints
+    // ============================================
+    Route::get('/complaints', [ComplaintController::class, 'index'])->name('complaints.index');
+    Route::resource('complaints', ComplaintController::class);
+    
+    // ============================================
+    // ADMIN ROUTES - Dashboard & Management
+    // ============================================
+    Route::middleware(['admin'])->prefix('admin')->group(function () {
+        Route::get('/dashboard', [AdminController::class, 'index'])->name('admin.dashboard');
+        Route::get('/complaints', [AdminController::class, 'complaints'])->name('admin.complaints');
+        Route::patch('/complaints/{complaint}/status', [AdminController::class, 'updateStatus'])->name('admin.complaints.status');
+    });
 });
 
+// Auth include (jika ada)
+require __DIR__.'/auth.php';
